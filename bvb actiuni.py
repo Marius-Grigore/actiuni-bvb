@@ -5,23 +5,35 @@ from datetime import datetime
 import os
 import re
 
+
+# Imita un browser pentru a nu mi se mai inchide conexiunea
+session = requests.Session()
+session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+}) 
+
+
 # Simbolurile actiunilor sunt parametrii query pentru link-uri
 def extrage_detalii_actiune(simbol):
     url = f"https://bvb.ro/FinancialInstruments/Details/FinancialInstrumentsDetails.aspx?s={simbol}"
-    raspuns = requests.get(url)
-    if raspuns.status_code == 200:
+    try:
+        raspuns = session.get(url, timeout=10)
+        raspuns.raise_for_status()
         soup = BeautifulSoup(raspuns.content, 'html.parser')
         detalii = {}
-
-        tabel = soup.find('table', id='ct100_body_ct102_IndicatorsControl_dvIndicators')
+        tabel = soup.find('table', id='ctl00_body_ctl02_IndicatorsControl_dvIndicators')
         if tabel:
             for tr in tabel.find_all('tr'):
                 cells = tr.find_all('td')
-                if len(cells) == 2:  # Daca randul are exact doua celule
+                if len(cells) == 2:
                     cheie = cells[0].get_text().strip()
-                    valoare = cells[1].get_text().strip()
-                    detalii[cheie] = valoare
+                    # Daca primul td de pe rand incepe cu "Dividend" sau cu "Capitalizare", sari peste acel rand (datele nu sunt in linie)
+                    if not any(cheie.startswith(prefix) for prefix in ["Dividend", "Capitalizare"]):
+                        valoare = cells[1].get_text().strip()
+                        detalii[cheie] = valoare
         return detalii
+    except requests.exceptions.RequestException as e:
+        print(f"Eroare: {e}")
     return {}
 
 def extrage_continut_tabel(url):
