@@ -41,7 +41,7 @@ def extrage_continut_tabel(url):
                     cells = tr.find_all('td')
                     if cells:
                         simbol_isin = cells[0].get_text().strip()
-                        match = re.search(r'RO', simbol_isin)
+                        match = re.search(r'RO|NL|CY|AT', simbol_isin)
                         if match:
                             isin_start_index = match.start()
                             simbol = simbol_isin[:isin_start_index]
